@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        AZURE_CREDENTIALS = credentials('azure-service-principal')
+        AZURE_CREDENTIALS = 'azure-service-principal'
         RESOURCE_GROUP = 'myResourceGroup'
         APP_SERVICE_NAME = 'myPythonBrijesh002'
     }
