@@ -6,7 +6,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/brijeshprajapati53/PythonApplicationForJenkins.git'
+               git branch: 'master', url:  'https://github.com/brijeshprajapati53/PythonApplicationForJenkins.git'
+                
             }
         }
         stage('Build') {
