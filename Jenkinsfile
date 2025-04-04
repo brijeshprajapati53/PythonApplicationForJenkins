@@ -20,25 +20,15 @@ pipeline {
             }
         }
 
-        stage('Test App') {
+       stage('Publish') {
             steps {
-                bat 'call venv\\Scripts\\activate && start /B python app.py'
-                bat 'timeout /T 5'
-                bat 'curl http://127.0.0.1:5000'
+                bat '''
+                powershell Compress-Archive -Path * -DestinationPath app.zip -Force
+                '''
             }
         }
 
-        stage('Login to Azure') {
-            steps {
-                withCredentials([azureServicePrincipal(credentialsId: "${AZURE_CREDENTIALS_ID}")]) {
-                    bat '''
-                        az login --service-principal -u %AZURE_CLIENT_ID% -p %AZURE_CLIENT_SECRET% --tenant %AZURE_TENANT_ID%
-                        az account set --subscription %AZURE_SUBSCRIPTION_ID%
-                    '''
-                }
-            }
-        }
-
+        
         stage('Deploy to Azure') {
             steps {
                 bat 'az webapp up --name %APP_SERVICE_NAME% --resource-group %RESOURCE_GROUP% --runtime "PYTHON:3.9" --sku B1'
