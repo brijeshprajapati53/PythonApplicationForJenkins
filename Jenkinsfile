@@ -15,24 +15,25 @@ pipeline {
 
         stage('Set Up Python') {
             steps {
-                sh 'python -m venv venv'
-                sh '. venv/bin/activate && pip install -r requirements.txt'
+                bat 'python -m venv venv'
+                bat 'call venv\\Scripts\\activate && pip install -r requirements.txt'
             }
         }
 
         stage('Test App') {
             steps {
-                sh '. venv/bin/activate && python app.py &'
-                sh 'sleep 5 && curl http://127.0.0.1:5000'
+                bat 'call venv\\Scripts\\activate && start /B python app.py'
+                bat 'timeout /T 5'
+                bat 'curl http://127.0.0.1:5000'
             }
         }
 
         stage('Login to Azure') {
             steps {
-                withCredentials([azureServicePrincipal("${AZURE_CREDENTIALS_ID}")]) {
-                    sh '''
-                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                        az account set --subscription $AZURE_SUBSCRIPTION_ID
+                withCredentials([azureServicePrincipal(credentialsId: "${AZURE_CREDENTIALS_ID}")]) {
+                    bat '''
+                        az login --service-principal -u %AZURE_CLIENT_ID% -p %AZURE_CLIENT_SECRET% --tenant %AZURE_TENANT_ID%
+                        az account set --subscription %AZURE_SUBSCRIPTION_ID%
                     '''
                 }
             }
@@ -40,7 +41,7 @@ pipeline {
 
         stage('Deploy to Azure') {
             steps {
-                sh 'az webapp up --name $APP_NAME --resource-group $RESOURCE_GROUP --runtime "PYTHON:3.9" --sku B1'
+                bat 'az webapp up --name %APP_SERVICE_NAME% --resource-group %RESOURCE_GROUP% --runtime "PYTHON:3.9" --sku B1'
             }
         }
     }
@@ -51,6 +52,6 @@ pipeline {
         }
         failure {
             echo 'Deployment Failed!'
-        }
-    }
+        }
+    }
 }
