@@ -1,48 +1,46 @@
 pipeline {
     agent any
     environment {
-        AZURE_CREDENTIALS = 'azure-service-principal'
+        AZURE_CREDENTIALS_ID = 'azure-service-principal'
         RESOURCE_GROUP = 'myResourceGroup'
         APP_SERVICE_NAME = 'myPythonBrijesh002'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/brijeshprajapati53/PythonApplicationForJenkins.git'
+                git branch: 'main', url: 'https://github.com/brijeshprajapati53/WebApplicationForJenkins.git'
             }
         }
 
-        stage('Build') {
+        stage('Set Up Python') {
             steps {
-                bat 'pip install -r requirements.txt'
+                sh 'python -m venv venv'
+                sh '. venv/bin/activate && pip install -r requirements.txt'
             }
         }
 
-        stage('Publish') {
+        stage('Test App') {
             steps {
-                bat 'powershell Compress-Archive -Path * -DestinationPath app.zip -Force'
+                sh '. venv/bin/activate && python app.py &'
+                sh 'sleep 5 && curl http://127.0.0.1:5000'
+            }
+        }
+
+        stage('Login to Azure') {
+            steps {
+                withCredentials([azureServicePrincipal("${AZURE_CREDENTIALS_ID}")]) {
+                    sh '''
+                        az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+                        az account set --subscription $AZURE_SUBSCRIPTION_ID
+                    '''
+                }
             }
         }
 
         stage('Deploy to Azure') {
             steps {
-                withCredentials([azureServicePrincipal(credentialsId: 'azure-service-principal')]) {
-                    script {
-                        def azureUser = env.AZURE_CREDENTIALS_USR
-                        def azurePass = env.AZURE_CREDENTIALS_PSW
-                        def azureTenant = env.AZURE_CREDENTIALS_TEN
-
-                        if (!azureUser?.trim() || !azurePass?.trim() || !azureTenant?.trim()) {
-                            error "Azure credentials are missing! Check Jenkins credentials."
-                        }
-
-                        bat """
-                        az login --service-principal -u ${azureUser} -p ${azurePass} --tenant ${azureTenant}
-                        az webapp deploy --resource-group ${RESOURCE_GROUP} --name ${APP_SERVICE_NAME} --src-path app.zip --type zip
-                        """
-                    }
-                }
+                sh 'az webapp up --name $APP_NAME --resource-group $RESOURCE_GROUP --runtime "PYTHON:3.9" --sku B1'
             }
         }
     }
@@ -53,6 +51,6 @@ pipeline {
         }
         failure {
             echo 'Deployment Failed!'
-        }
-    }
+        }
+    }
 }
