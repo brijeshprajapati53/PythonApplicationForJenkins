@@ -21,15 +21,23 @@ pipeline {
 
         stage('Publish') {
             steps {
-                bat 'zip -r app.zip .'
+                bat '''
+                powershell Compress-Archive -Path * -DestinationPath app.zip -Force
+                '''
             }
         }
 
         stage('Deploy to Azure') {
             steps {
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    bat 'az login --service-principal -u $AZURE_CREDENTIALS_USR -p $AZURE_CREDENTIALS_PSW --tenant $AZURE_CREDENTIALS_TEN'
-                    bat 'az webapp deploy --resource-group $RESOURCE_GROUP --name $APP_SERVICE_NAME --src-path app.zip --type zip'
+                    bat '''
+                    set AZURE_USER=%AZURE_CREDENTIALS_USR%
+                    set AZURE_PASS=%AZURE_CREDENTIALS_PSW%
+                    set AZURE_TENANT=%AZURE_CREDENTIALS_TEN%
+
+                    az login --service-principal -u %AZURE_USER% -p %AZURE_PASS% --tenant %AZURE_TENANT%
+                    az webapp deploy --resource-group %RESOURCE_GROUP% --name %APP_SERVICE_NAME% --src-path app.zip --type zip
+                    '''
                 }
             }
         }
