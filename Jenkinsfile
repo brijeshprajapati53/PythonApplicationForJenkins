@@ -1,7 +1,6 @@
 pipeline {
     agent any
     environment {
-        AZURE_CREDENTIALS = credentials('azure-service-principal')
         RESOURCE_GROUP = 'myResourceGroup'
         APP_SERVICE_NAME = 'myPythonBrijesh002'
     }
@@ -21,23 +20,27 @@ pipeline {
 
         stage('Publish') {
             steps {
-                bat '''
-                powershell Compress-Archive -Path * -DestinationPath app.zip -Force
-                '''
+                bat 'powershell Compress-Archive -Path * -DestinationPath app.zip -Force'
             }
         }
 
         stage('Deploy to Azure') {
             steps {
-                withCredentials([azureServicePrincipal('azure-service-principal')]) {
-                    bat '''
-                    set AZURE_USER=%AZURE_CREDENTIALS_USR%
-                    set AZURE_PASS=%AZURE_CREDENTIALS_PSW%
-                    set AZURE_TENANT=%AZURE_CREDENTIALS_TEN%
+                withCredentials([azureServicePrincipal(credentialsId: 'azure-service-principal')]) {
+                    script {
+                        def azureUser = env.AZURE_CREDENTIALS_USR
+                        def azurePass = env.AZURE_CREDENTIALS_PSW
+                        def azureTenant = env.AZURE_CREDENTIALS_TEN
 
-                    az login --service-principal -u %AZURE_USER% -p %AZURE_PASS% --tenant %AZURE_TENANT%
-                    az webapp deploy --resource-group %RESOURCE_GROUP% --name %APP_SERVICE_NAME% --src-path app.zip --type zip
-                    '''
+                        if (!azureUser?.trim() || !azurePass?.trim() || !azureTenant?.trim()) {
+                            error "Azure credentials are missing! Check Jenkins credentials."
+                        }
+
+                        bat """
+                        az login --service-principal -u ${azureUser} -p ${azurePass} --tenant ${azureTenant}
+                        az webapp deploy --resource-group ${RESOURCE_GROUP} --name ${APP_SERVICE_NAME} --src-path app.zip --type zip
+                        """
+                    }
                 }
             }
         }
